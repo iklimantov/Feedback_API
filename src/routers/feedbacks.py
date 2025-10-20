@@ -3,27 +3,23 @@ from src.db.database import get_connection
 from src.models.schemas import FeedbackResponse, Feedback, FeedbackCreate
 from datetime import datetime
 
-
 router = APIRouter(prefix="/feedbacks", tags=["Feedbacks"])
 
 
 # Получение списка всех отзывов из базы данных
 @router.get("/", response_model=FeedbackResponse)
-def get_feedbacks():
+async def get_feedbacks():
     """
     Получение списка всех отзывов
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = """
+    conn = await get_connection()
+    cursor = await conn.execute("""
     SELECT f.id, u.name, f.date, f.text
     FROM feedbacks f
     JOIN users u ON f.user_id = u.id
-    """
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    conn.close()
+    """)
+    rows = await cursor.fetchall()
+    await conn.close()
 
     feedbacks = [
         {
@@ -39,30 +35,27 @@ def get_feedbacks():
 
 # Добавление нового отзыва в базу данных
 @router.post('/', response_model=Feedback)
-def add_feedback(feedback: FeedbackCreate):
+async def add_feedback(feedback: FeedbackCreate):
     """
     Добавляет новый отзыв в базу данных.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    conn = await get_connection()
 
-    # Проверим, существует ли пользователь с таким user_id
-    cursor.execute("SELECT id FROM users WHERE id = ?", (feedback.user_id,))
-    user = cursor.fetchone()
+    cursor = await conn.execute("SELECT id FROM users WHERE id = ?", (feedback.user_id,))
+    user = await cursor.fetchone()
     if not user:
-        conn.close()
+        await conn.close()
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    # Вставка нового отзыва
     now = datetime.now().strftime('%Y-%m-%d %H:%M')
-    cursor.execute(
+    await conn.execute(
         "INSERT INTO feedbacks (user_id, date, text) VALUES (?, ?, ?)",
         (feedback.user_id, now, feedback.text)
     )
-    conn.commit()
-    feedback_id = cursor.lastrowid
-    conn.close()
+    await conn.commit()
 
-    return Feedback(id=feedback_id, user_id=feedback.user_id,
-                    date=now,
-                    text=feedback.text)
+    cursor = await conn.execute("SELECT last_insert_rowid()")
+    feedback_id = (await cursor.fetchone())[0]
+    await conn.close()
+
+    return Feedback(id=feedback_id, user_id=feedback.user_id, date=now, text=feedback.text)

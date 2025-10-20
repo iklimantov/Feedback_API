@@ -1,13 +1,12 @@
 from fastapi import FastAPI
 from src.routers import users, feedbacks
 
-
 app = FastAPI()
 
 
 # Корневой эндпоинт проекта
 @app.get('/')
-def root():
+async def root():
     """Корневой метод проекта"""
     return {"message": "Это API, написанное на фреймворке FastAPI. Возможности: "
                        "Валидация запросов с помощью Pydantic, "
