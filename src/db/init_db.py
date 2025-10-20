@@ -96,3 +96,15 @@ async def init_db():
 # Для отладки — можно вызвать вручную:
 # import asyncio
 # asyncio.run(init_db())
+
+
+import asyncio
+import sys
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(init_db())
+        print("База данных успешно инициализирована и заполнена тестовыми данными.")
+    except Exception as e:
+        print(f"Ошибка при инициализации базы данных: {e}", file=sys.stderr)
+        sys.exit(1)
